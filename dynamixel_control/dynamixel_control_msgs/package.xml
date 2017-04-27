@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package>
+  <name>dynamixel_control_msgs</name>
+  <version>0.1.0</version>
+  <description>
+    The The dynamixel_control_msgs package
+  </description>
+  <maintainer email="pigheadx@gmail.com">Ph.X</maintainer>
+  <license>BSD</license>
+  <url type="website">https://github.com/pigheadx/dynamixel_control</url>
+  <author email="pigheadx@gmail.com">Ph.X</author>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <run_depend>message_generation</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <export></export>
+</package>

@@ -1,0 +1,24 @@
+<launch>
+  <node name="image_archive" pkg="image_archive" type="image_archive" required="true" output="screen">
+    <rosparam>
+      image_counter_: 1
+      capture_topic_: "image_archive"
+      image_0_:
+        image_topic_: "grouper_lidar/depthmap_image"
+        filename_prefix: "lidar-depth-"
+<!--      image_1_:
+        image_topic_: "grouper_lidar/intensity_image"
+        filename_prefix_: "lidar-intensity-"
+      image_2_:
+        image_topic_: "zed/left/image_raw_color"
+        filename_prefix_: "zed-left-"
+      image_3_:
+        image_topic_: "zed/right/image_raw_color"
+        filename_prefix_: "zed-right-"
+      image_4_:
+        image_topic_: "zed/depth/depth_registered"
+        filename_prefix_: "zed-depth-"
+-->
+   </rosparam>
+  </node>
+</launch>

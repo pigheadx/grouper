@@ -1,0 +1,9 @@
+# Server is dynamixel_controll
+# In order to, send motor controll with different type (position torque and velocity) and unit (radian and raw value)
+
+string motor_name
+string control_type
+string unit
+float64 value
+---
+float64 value
