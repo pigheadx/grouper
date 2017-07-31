@@ -2,10 +2,31 @@
 Changelog for package dynamixel_sdk
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.4.4 (2017-04-26)
+-----------
+* hotfix - return delay time is changed from 4 into 8 due to the Ubuntu update 16.04.2
+* Contributors: Leon
+
+3.4.3 (2017-02-17)
+-----------
+* DynamixelSDK C++ ver. and ROS ver. in Windows platform now can use the port number of over then 10 #45
+* Contributors: Leon
+
+3.4.2 (2017-02-16)
+-----------
+* fprintf output in GrouBulkRead of C++ removed
+* MATLAB library compiler error solving
+* Makefile for build example sources in SBC added
+* build files of windows c and c++ SDK rebuilt by using renewed SDK libraries
+* example source of dxl_monitor - c and cpp ver modified #50
+* Solved issue : #31, #34, #36, #50
+* Contributors: Leon
+
 3.4.1 (2016-08-22)
 -----------
 * added ROS package folder for ROS users
 * modified original header files for ROS package
+* Contributors: Leon
 
 3.4.0 (2016-08-12)
 -----------
@@ -50,4 +71,4 @@ Changelog for package dynamixel_sdk
 * if the last bulk_read / sync_read result is failure -> GetData return false
 * communication result & rx packet error print function modified.
 * first release
-* Contributors: Leon, ROBOTIS, ROBOTIS-zerom, leon, pyo, sadtale
+* Contributors: Leon, Zerom, Pyo

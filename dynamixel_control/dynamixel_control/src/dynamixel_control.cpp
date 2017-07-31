@@ -286,6 +286,7 @@ bool DynamixelControl::readDynamixelRegister(uint8_t id, uint16_t addr, uint8_t 
   else
   {
     packetHandler_->printTxRxResult(dynamixel_comm_result_);
+    ROS_INFO("[ID] %d, [addr] %d, [length] %d, [value] %ld, [dynamixel_comm_result_] %d, [dynamixel_error] %d", id, addr,length,*value,dynamixel_comm_result_,dynamixel_error);
     ROS_ERROR("[ID] %u, Fail to read!", id);
     return false;
   }
@@ -553,6 +554,7 @@ bool DynamixelControl::motorControlCallback(dynamixel_control_msgs::MotorControl
 {
   int8_t motor = motor_name_index_[req.motor_name];
   int64_t pos = 0;
+  int64_t spd = 0;
   if (motor_name_[motor]!=req.motor_name)
   {
     ROS_ERROR("Illegal motor name.");
@@ -592,10 +594,19 @@ bool DynamixelControl::motorControlCallback(dynamixel_control_msgs::MotorControl
         return false;
       }
     }
-      else if (req.control_type == "velocity") 
+    else if (req.control_type == "velocity") 
     {
-      ROS_ERROR("Velocity not supported yet.");
-      return false;
+      if (req.unit == "raw")
+      {
+        spd = req.value;
+        writeSpeed(motor, spd);
+        return true;
+      }
+      else
+      {
+        ROS_ERROR("Velocity not supported yet.");
+        return false;
+      }
     }
     else if (req.control_type == "torque")
     {
@@ -616,7 +627,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "dynamixel_control");
   DynamixelControl dynamixel_pos_ctrl;
 
-  ros::Rate loop_rate(125);
+  ros::Rate loop_rate(60);
 
   while (ros::ok())
   {

@@ -20,6 +20,7 @@ bool GrouperLidar::grouperLidarLoop(void)
   switch(operating_state_)
   {
     case IDLE:
+      changeMotorSpeed(MOTOR_MOVING_SPEED);
       moveMotor(0);
       log_enable = false;
     break;
@@ -29,10 +30,12 @@ bool GrouperLidar::grouperLidarLoop(void)
 //        present_scan_line_ = 0;
         operating_state_=CW;
 //        log_enable = true;
+        changeMotorSpeed(MOTOR_OPERATING_SPEED);
         moveMotor(MOTOR_BOARD_CW-MOTOR_OVER_EXCEED);
       }
       else
       {
+        changeMotorSpeed(MOTOR_MOVING_SPEED);
         moveMotor(MOTOR_BOARD_CCW+MOTOR_OVER_EXCEED);
       }
     break;
@@ -44,6 +47,7 @@ bool GrouperLidar::grouperLidarLoop(void)
 //        log_enable = true;
         reampleImage();
         memset(scan_up2date_flag_,false,sizeof(scan_up2date_flag_));
+        changeMotorSpeed(MOTOR_OPERATING_SPEED);
         moveMotor(MOTOR_BOARD_CCW+MOTOR_OVER_EXCEED);
       }
       else
@@ -59,6 +63,7 @@ bool GrouperLidar::grouperLidarLoop(void)
 //        log_enable = true;
         reampleImage();
         memset(scan_up2date_flag_,false,sizeof(scan_up2date_flag_));
+        changeMotorSpeed(MOTOR_OPERATING_SPEED);
         moveMotor(MOTOR_BOARD_CW-MOTOR_OVER_EXCEED);
       }
       else
@@ -107,9 +112,15 @@ void GrouperLidar::initGrouperLidar(void)
   
   for(int i=0;i<SCAN_LINES;i++)
   {
-    scan_goal_position_[i] =(int)(scan_start_-i*(scan_start_-scan_end_)/(SCAN_LINES-1));
-    ROS_INFO("initGL %d",scan_goal_position_[i]);
+    scan_goal_position_[i] = scan_start_-i*(scan_start_-scan_end_)/(SCAN_LINES-1);
+//    ROS_INFO("initGL %d",scan_goal_position_[i]);
 //    scan_up2date_flag_[i] = false;
+  }
+  
+  for(int i=0;i<MOTOR_LOG_WINDOW;i++)
+  {
+    motor_log_time_[i] = ros::Time(0.);
+    motor_log_position_[i] = 0;
   }
 
   motor_srv_.request.motor_name = "cam_pan";
@@ -133,7 +144,7 @@ void GrouperLidar::moveMotor(double value)
   if (motor_control_.call(motor_srv_))
   {
     ROS_DEBUG("motor to %f", motor_srv_.response.value);
-    motor_goal_position_ = (int)motor_srv_.response.value;
+    motor_goal_position_ = motor_srv_.response.value;
   }
   else
   {
@@ -158,12 +169,42 @@ double GrouperLidar::getMotorValue(double value)
   }
 }
 
-bool GrouperLidar::motorReachGoal()
+void GrouperLidar::changeMotorSpeed(float value)
 {
-  return (abs(motor_present_position_-motor_goal_position_) < MOTOR_TOLERANT);
+  motor_srv_.request.motor_name = motor_name_;
+  motor_srv_.request.control_type = "velocity";
+  motor_srv_.request.unit = "raw";
+  motor_srv_.request.value = value;
+  if (motor_control_.call(motor_srv_))
+  {
+    return;
+  }
+  else
+  {
+    ROS_ERROR("Failed to call motor service");
+    return;
+  }
 }
 
-int GrouperLidar::GetClosestLine(int motor_pos)
+float GrouperLidar::estimatePosition(ros::Time msg_time)
+{
+  if(motor_log_time_[MOTOR_LOG_WINDOW-1].toSec() == 0)
+  {
+    return motor_log_position_[0];
+  }
+  else
+  {
+    ROS_INFO("%f %f %f",motor_log_position_[0],motor_log_position_[MOTOR_LOG_WINDOW-1],((motor_log_position_[0]-motor_log_position_[MOTOR_LOG_WINDOW-1])*(msg_time-motor_log_time_[0]).toSec()/(motor_log_time_[0]-motor_log_time_[MOTOR_LOG_WINDOW-1]).toSec())+motor_log_position_[0]);
+    return ((motor_log_position_[0]-motor_log_position_[MOTOR_LOG_WINDOW-1])*(msg_time-motor_log_time_[0]).toSec()/(motor_log_time_[0]-motor_log_time_[MOTOR_LOG_WINDOW-1]).toSec())+motor_log_position_[0];
+  }
+}
+
+bool GrouperLidar::motorReachGoal()
+{
+  return (abs(estimatePosition(ros::Time::now())-motor_goal_position_) < MOTOR_TOLERANT);
+}
+
+int GrouperLidar::GetClosestLine(float motor_pos)
 {
   int result;
   result = 0;
@@ -300,6 +341,7 @@ bool GrouperLidar::grouperLidarControlCallback(grouper_lidar_msgs::GrouperLidarC
   if(req.command=="start")
   {
     memset(scan_up2date_flag_,false,sizeof(scan_up2date_flag_));
+    changeMotorSpeed(MOTOR_MOVING_SPEED);
     moveMotor(MOTOR_BOARD_CCW+MOTOR_OVER_EXCEED);
     operating_state_ = INIT;
     res.ans = true;
@@ -322,8 +364,16 @@ void GrouperLidar::motorStateCallback(const dynamixel_control_msgs::MotorState::
 {
   if(msg->header.frame_id==motor_name_)
   {
-    motor_present_position_=(int)msg->present_position;
-    ROS_DEBUG("motor present %d", motor_present_position_);
+    for(int i=MOTOR_LOG_WINDOW-1;i>0;i--)
+    {
+      motor_log_time_[i] = motor_log_time_[i-1];
+      motor_log_position_[i] = motor_log_position_[i-1];
+    }
+    motor_log_time_[0] = msg->header.stamp;
+    motor_log_position_[0] = msg->present_position;
+
+//    motor_present_position_=msg->present_position;
+    ROS_DEBUG("motor present %f", motor_present_position_);
   }
 }
 
@@ -331,6 +381,8 @@ void GrouperLidar::lidarScanCallback(const sensor_msgs::LaserScan::ConstPtr& msg
 {
   memcpy(&lidar_ranges_[0],&msg->ranges[0],LIDAR_POINTS*sizeof(float));
   memcpy(&lidar_intensities_[0],&msg->intensities[0],LIDAR_POINTS*sizeof(float));
+
+  motor_present_position_ = estimatePosition(msg->header.stamp);
 
   int scan_line_;
   scan_line_ = GetClosestLine(motor_present_position_);
